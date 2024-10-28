@@ -1,4 +1,12 @@
-import { doBench } from "./db.mjs";
+import { doBench, prepareBench } from "./db.mjs";
+
+prepareBench(() => {
+  return {
+    input: [],
+    toFind: [],
+    expected: [],
+  };
+});
 
 // PREPARE
 const numbers = [];
@@ -15,6 +23,7 @@ doBench("Numbers 10000 find", (iterCount) => {
     indexes.push(numbers.findIndex((n) => n === 3));
     indexes.push(numbers.findIndex((n) => n === 4));
   }
+  return [];
 });
 
 doBench("Numbers 10000 for loop", (iterCount) => {
@@ -45,4 +54,6 @@ doBench("Numbers 10000 for loop", (iterCount) => {
       }
     }
   }
+
+  return [];
 });

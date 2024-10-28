@@ -3,17 +3,31 @@ import { performance } from "perf_hooks";
 const ITERATIONS_COUNT = 1000;
 console.log(`ITERATIONS: ${ITERATIONS_COUNT}`);
 
+let STATE = null;
+
+export const prepareBench = (func) => {
+  STATE = func(ITERATIONS_COUNT);
+};
+
 export const doBench = (name, func) => {
   console.log(`[${name}] Started`);
 
   let start = performance.now();
-  func(ITERATIONS_COUNT);
+  const expected = func(ITERATIONS_COUNT, STATE.input, STATE.toFind);
   let end = performance.now();
   const diff = (end - start).toFixed(2);
   console.log(`[${name}]  ${diff} ms`);
+
+  _expectSameArray(expected, STATE.expected);
 };
 
-export const expectSameArray = (arr1, arr2, prefix) => {
+export const newRandomArr = (srcArr) => {
+  const res = [...srcArr];
+  res.sort(() => Math.random() - 0.5);
+  return res;
+};
+
+const _expectSameArray = (arr1, arr2, prefix) => {
   if (arr1.length !== arr2.length) {
     console.error(`[${prefix} TEST] arr1 length != arr2 length`);
     return;
@@ -27,10 +41,4 @@ export const expectSameArray = (arr1, arr2, prefix) => {
       return;
     }
   }
-};
-
-export const newRandomArr = (srcArr) => {
-  const res = [...srcArr];
-  res.sort(() => Math.random() - 0.5);
-  return res;
 };
