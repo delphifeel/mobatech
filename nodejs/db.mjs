@@ -21,7 +21,9 @@ export const expectSameArray = (arr1, arr2, prefix) => {
 
   for (let i = 0; i < arr1.length; i++) {
     if (arr1[i] !== arr2[i]) {
-      console.error(`[${prefix} TEST] arr1 != arr2 (${arr1} vs ${arr2})`);
+      console.error(
+        `[${prefix} TEST] arr1 != arr2\n\nArr1: ${arr1}\n\nArr2: ${arr2}`
+      );
       return;
     }
   }
