@@ -24,7 +24,6 @@ prepareBench(() => {
 
   TO_FIND_IDS = newRandomArr(TO_FIND_IDS);
   TO_FIND_IDS = TO_FIND_IDS.slice(0, COUNT / 3);
-  // console.log(TO_FIND_IDS);
 
   const EXPECTED_ARRAY = [];
   for (let i = 0; i < TO_FIND_IDS.length; i++) {
@@ -40,39 +39,23 @@ prepareBench(() => {
   };
 });
 
-const Array = {
-  objectsArray: [],
-
-  init(srcArray) {
-    this.objectsArray = [...srcArray];
-  },
-
-  findAndFormat(idToFind) {
-    for (let oa = 0; oa < this.objectsArray.length; oa++) {
-      if (this.objectsArray[oa].id === idToFind) {
-        const v = this.objectsArray[oa];
-        return `${v.name} + ${v.price}`;
-      }
-    }
-  },
-};
-
-const MyMap = {
-  map: {},
-
-  init(srcArray) {
-    for (let i = 0; i < srcArray.length; i++) {
-      this.map[srcArray[i].id] = srcArray[i];
-    }
-  },
-
-  findAndFormat(idToFind) {
-    const v = this.map[idToFind];
-    return `${v.name} + ${v.price}`;
-  },
-};
-
 doBench("Test Array", (iterCount, input, toFind) => {
+  const Array = {
+    objectsArray: [],
+
+    init(srcArray) {
+      this.objectsArray = [...srcArray];
+    },
+
+    findAndFormat(idToFind) {
+      for (let oa = 0; oa < this.objectsArray.length; oa++) {
+        if (this.objectsArray[oa].id === idToFind) {
+          const v = this.objectsArray[oa];
+          return `${v.name} + ${v.price}`;
+        }
+      }
+    },
+  };
   Array.init(input);
   let results = [];
 
@@ -88,7 +71,61 @@ doBench("Test Array", (iterCount, input, toFind) => {
   return results;
 });
 
+doBench("Test FasterArray", (iterCount, input, toFind) => {
+  const FasterArray = {
+    ids: [],
+    prices: [],
+
+    init(srcArray) {
+      const srcCopy = [...srcArray];
+      srcCopy.sort((a, b) => a.id - b.id);
+      for (let i = 0; i < srcCopy.length; i++) {
+        this.ids.push(srcCopy[i].id);
+        this.prices.push(srcCopy[i].price);
+      }
+    },
+
+    findAndFormat(idToFind) {
+      for (let i = 0; i < this.ids.length; i++) {
+        if (this.ids[i] === idToFind) {
+          const name = `${this.ids[i]} name`;
+          const price = this.prices[i];
+          return `${name} + ${price}`;
+        }
+      }
+    },
+  };
+
+  FasterArray.init(input);
+  let results = [];
+
+  for (let iter_index = 0; iter_index < iterCount; iter_index++) {
+    results = [];
+
+    for (let tfi = 0; tfi < toFind.length; tfi++) {
+      const v = FasterArray.findAndFormat(toFind[tfi]);
+      results.push(v);
+    }
+  }
+
+  return results;
+});
+
 doBench("Test Map", (iterCount, input, toFind) => {
+  const MyMap = {
+    map: {},
+
+    init(srcArray) {
+      for (let i = 0; i < srcArray.length; i++) {
+        this.map[srcArray[i].id] = srcArray[i];
+      }
+    },
+
+    findAndFormat(idToFind) {
+      const v = this.map[idToFind];
+      return `${v.name} + ${v.price}`;
+    },
+  };
   MyMap.init(input);
   let results = [];
 
