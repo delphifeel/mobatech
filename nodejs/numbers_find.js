@@ -1,16 +1,19 @@
 import { doBench, prepareBench } from "./db.mjs";
 
-prepareBench(() => {
-  return {
-    input: [],
-    toFind: [],
-    expected: [],
-  };
-});
+prepareBench(
+  () => {
+    return {
+      input: [],
+      toFind: [],
+      expected: [],
+    };
+  },
+  { iterations: 1 }
+);
 
 // PREPARE
 const numbers = [];
-for (let i = 0; i < 10000; i++) {
+for (let i = 0; i < 400000; i++) {
   numbers.push(i);
 }
 numbers.sort(() => Math.random() - 0.5);

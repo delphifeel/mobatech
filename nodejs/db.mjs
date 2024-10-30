@@ -1,12 +1,16 @@
 import { performance } from "perf_hooks";
 
-const ITERATIONS_COUNT = 1000;
-console.log(`ITERATIONS: ${ITERATIONS_COUNT}`);
+let ITERATIONS_COUNT = 1000;
 
 let STATE = null;
 
-export const prepareBench = (func) => {
+export const prepareBench = (func, config = {}) => {
+  const iterations = config.iterations;
+  if (iterations) {
+    ITERATIONS_COUNT = iterations;
+  }
   STATE = func(ITERATIONS_COUNT);
+  console.log(`ITERATIONS: ${ITERATIONS_COUNT}`);
 };
 
 export const doBench = (name, func) => {
@@ -21,22 +25,34 @@ export const doBench = (name, func) => {
   _expectSameArray(expected, STATE.expected);
 };
 
+export const arrayOfRandomNumbers = (size, mul) => {
+  const result = [];
+  for (let i = 0; i < size; i++) {
+    result.push(Math.random() * mul);
+  }
+  return result;
+};
+
 export const newRandomArr = (srcArr) => {
   const res = [...srcArr];
   res.sort(() => Math.random() - 0.5);
   return res;
 };
 
-const _expectSameArray = (arr1, arr2, prefix) => {
-  if (arr1.length !== arr2.length) {
-    console.error(`[${prefix} TEST] arr1 length != arr2 length`);
+const _expectSameArray = (actual, expected, prefix) => {
+  if (actual.length !== expected.length) {
+    console.error(
+      `[${prefix} TEST] arr1 != arr2\n\nArr1: ${actual}\n\nArr2: ${expected}`
+    );
     return;
   }
 
-  for (let i = 0; i < arr1.length; i++) {
-    if (arr1[i] !== arr2[i]) {
+  for (let i = 0; i < actual.length; i++) {
+    const actualJSON = JSON.stringify(actual);
+    const expectedJSON = JSON.stringify(expected);
+    if (actualJSON !== expectedJSON) {
       console.error(
-        `[${prefix} TEST] arr1 != arr2\n\nArr1: ${arr1}\n\nArr2: ${arr2}`
+        `[${prefix} TEST] actual != expected\n\nActual:   ${actualJSON}\n\nExpected: ${expectedJSON}`
       );
       return;
     }

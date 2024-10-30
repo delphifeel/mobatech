@@ -1,141 +1,117 @@
-import { doBench, newRandomArr, prepareBench } from "./db.mjs";
+import { doBench, arrayOfRandomNumbers, prepareBench } from "./db.mjs";
 
-prepareBench(() => {
-  const COUNT = 3000;
-  let INPUT_ARRAY = [];
-  let TO_FIND_IDS = [];
-  for (let i = 0; i < COUNT; i++) {
-    const id = i + 1;
-    TO_FIND_IDS.push(id);
-    INPUT_ARRAY.push({
-      id,
-      name: `${id} name`,
-      price: (Math.random() + 1) * 33,
-    });
-  }
+const BUILDS_COUNT = 4;
+const ABILITIES_COUNT = 10;
+const RATES_COUNT = 160;
 
-  const findIn_INPUT_ARRAY = (id) => {
-    for (let i = 0; i < INPUT_ARRAY.length; i++) {
-      if (INPUT_ARRAY[i].id === id) {
-        return INPUT_ARRAY[i];
+prepareBench(
+  () => {
+    let input = [];
+    let expected = [];
+    for (let i = 0; i < BUILDS_COUNT; i++) {
+      const abilityPickRates = [];
+      for (let ab_i = 0; ab_i < ABILITIES_COUNT; ab_i++) {
+        let randomRates = arrayOfRandomNumbers(RATES_COUNT, 100);
+        randomRates = randomRates.map((rate) => Math.floor(rate));
+        abilityPickRates.push({
+          ability: `#${ab_i + 1} ability`,
+          rates: randomRates,
+        });
       }
+
+      const build = {
+        buildID: `${Math.random() * 10} ID`,
+        matches: Math.floor(Math.random() * 100),
+        wins: Math.floor(Math.random() * 30),
+        earlyGameItems: `${Math.floor(Math.random() * i)} items`,
+        abilityPickRates,
+      };
+      input.push(build);
     }
-  };
 
-  TO_FIND_IDS = newRandomArr(TO_FIND_IDS);
-  TO_FIND_IDS = TO_FIND_IDS.slice(0, COUNT / 3);
-
-  const EXPECTED_ARRAY = [];
-  for (let i = 0; i < TO_FIND_IDS.length; i++) {
-    const toFindId = TO_FIND_IDS[i];
-    const v = findIn_INPUT_ARRAY(toFindId);
-    EXPECTED_ARRAY.push(`${v.name} + ${v.price}`);
-  }
-
-  return {
-    input: newRandomArr(INPUT_ARRAY),
-    toFind: TO_FIND_IDS,
-    expected: EXPECTED_ARRAY,
-  };
-});
-
-doBench("Test Array", (iterCount, input, toFind) => {
-  const Array = {
-    objectsArray: [],
-
-    init(srcArray) {
-      this.objectsArray = [...srcArray];
-    },
-
-    findAndFormat(idToFind) {
-      for (let oa = 0; oa < this.objectsArray.length; oa++) {
-        if (this.objectsArray[oa].id === idToFind) {
-          const v = this.objectsArray[oa];
-          return `${v.name} + ${v.price}`;
+    for (let i = 0; i < BUILDS_COUNT; i++) {
+      const inputBuild = input[i];
+      const expectedBuild = [];
+      for (let lvl_i = 0; lvl_i < RATES_COUNT; lvl_i++) {
+        let max = 0;
+        for (let ab_i = 0; ab_i < ABILITIES_COUNT; ab_i++) {
+          const rate = inputBuild.abilityPickRates[ab_i].rates[lvl_i];
+          max = Math.max(max, rate);
         }
+        expectedBuild.push(max);
       }
-    },
-  };
-  Array.init(input);
-  let results = [];
 
-  for (let iter_index = 0; iter_index < iterCount; iter_index++) {
-    results = [];
-
-    for (let tfi = 0; tfi < toFind.length; tfi++) {
-      const v = Array.findAndFormat(toFind[tfi]);
-      results.push(v);
+      expected.push(expectedBuild);
     }
+
+    return {
+      input,
+      expected,
+      toFind: [],
+    };
+  },
+  {
+    iterations: 3000,
   }
+);
 
-  return results;
-});
-
-doBench("Test FasterArray", (iterCount, input, toFind) => {
-  const FasterArray = {
-    ids: [],
-    prices: [],
-
-    init(srcArray) {
-      const srcCopy = [...srcArray];
-      srcCopy.sort((a, b) => a.id - b.id);
-      for (let i = 0; i < srcCopy.length; i++) {
-        this.ids.push(srcCopy[i].id);
-        this.prices.push(srcCopy[i].price);
-      }
-    },
-
-    findAndFormat(idToFind) {
-      for (let i = 0; i < this.ids.length; i++) {
-        if (this.ids[i] === idToFind) {
-          const name = `${this.ids[i]} name`;
-          const price = this.prices[i];
-          return `${name} + ${price}`;
+doBench("#1", (iterCount, input) => {
+  let result = [];
+  for (let iter_index = 0; iter_index < iterCount; iter_index++) {
+    result = [];
+    for (let i = 0; i < BUILDS_COUNT; i++) {
+      const inputBuild = input[i];
+      const expectedBuild = [];
+      for (let lvl_i = 0; lvl_i < RATES_COUNT; lvl_i++) {
+        let max = 0;
+        for (let ab_i = 0; ab_i < ABILITIES_COUNT; ab_i++) {
+          const rate = inputBuild.abilityPickRates[ab_i].rates[lvl_i];
+          max = Math.max(max, rate);
         }
+        expectedBuild.push(max);
       }
-    },
-  };
 
-  FasterArray.init(input);
-  let results = [];
-
-  for (let iter_index = 0; iter_index < iterCount; iter_index++) {
-    results = [];
-
-    for (let tfi = 0; tfi < toFind.length; tfi++) {
-      const v = FasterArray.findAndFormat(toFind[tfi]);
-      results.push(v);
+      result.push(expectedBuild);
     }
   }
 
-  return results;
+  return result;
 });
 
-doBench("Test Map", (iterCount, input, toFind) => {
-  const MyMap = {
-    map: {},
+doBench("#2", (iterCount, input) => {
+  let result = [];
 
-    init(srcArray) {
-      for (let i = 0; i < srcArray.length; i++) {
-        this.map[srcArray[i].id] = srcArray[i];
+  let buildToRateToAbility = [];
+  for (let i = 0; i < BUILDS_COUNT; i++) {
+    const inputBuild = input[i];
+    const rateToAbility = [];
+    for (let lvl_i = 0; lvl_i < RATES_COUNT; lvl_i++) {
+      const ability = [];
+      for (let ab_i = 0; ab_i < ABILITIES_COUNT; ab_i++) {
+        ability.push(inputBuild.abilityPickRates[ab_i].rates[lvl_i]);
       }
-    },
+      rateToAbility.push(ability);
+    }
 
-    findAndFormat(idToFind) {
-      const v = this.map[idToFind];
-      return `${v.name} + ${v.price}`;
-    },
-  };
-  MyMap.init(input);
-  let results = [];
+    buildToRateToAbility.push(rateToAbility);
+  }
 
   for (let iter_index = 0; iter_index < iterCount; iter_index++) {
-    results = [];
+    result = [];
+    for (let i = 0; i < BUILDS_COUNT; i++) {
+      const expectedBuild = [];
+      for (let lvl_i = 0; lvl_i < RATES_COUNT; lvl_i++) {
+        let max = 0;
+        for (let ab_i = 0; ab_i < ABILITIES_COUNT; ab_i++) {
+          const rate = buildToRateToAbility[i][lvl_i][ab_i];
+          max = Math.max(max, rate);
+        }
+        expectedBuild.push(max);
+      }
 
-    for (let tfi = 0; tfi < toFind.length; tfi++) {
-      const v = MyMap.findAndFormat(toFind[tfi]);
-      results.push(v);
+      result.push(expectedBuild);
     }
   }
-  return results;
+
+  return result;
 });
