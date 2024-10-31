@@ -1,8 +1,8 @@
 import { arrayOfRandomNumbers } from "./db.mjs";
 
-const BUILDS_COUNT = 6;
-const ABILITIES_COUNT = 7;
-const RATES_COUNT = 64;
+const BUILDS_COUNT = 1;
+const ABILITIES_COUNT = 2;
+const RATES_COUNT = 3;
 
 let input = [];
 let expected = [];
@@ -42,6 +42,8 @@ for (let i = 0; i < BUILDS_COUNT; i++) {
   expected.push(expectedBuild);
 }
 
+// console.log(expected);
+
 const index = (i, lvl_i, ab_i) => {
   return i * RATES_COUNT * ABILITIES_COUNT + lvl_i * ABILITIES_COUNT + ab_i;
 };
@@ -64,24 +66,6 @@ var suite = new Benchmark.Suite();
 
 // add tests
 suite
-  .add("#0", function () {
-    const result = [];
-
-    for (let i = 0; i < BUILDS_COUNT; i++) {
-      const inputBuild = input[i];
-      const expectedBuild = [];
-      for (let lvl_i = 0; lvl_i < RATES_COUNT; lvl_i++) {
-        let max = 0;
-        for (let ab_i = 0; ab_i < ABILITIES_COUNT; ab_i++) {
-          const rate = inputBuild.abilityPickRates[ab_i].rates[lvl_i];
-          max = Math.max(max, rate);
-        }
-        expectedBuild.push(max);
-      }
-
-      result.push(expectedBuild);
-    }
-  })
   .add("#1", function () {
     const result = [];
     for (let i = 0; i < BUILDS_COUNT; i++) {
