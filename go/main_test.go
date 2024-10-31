@@ -11,7 +11,7 @@ import (
 
 const BUILDS_COUNT = 4
 const ABILITIES_COUNT = 4
-const RATES_COUNT = 16
+const RATES_COUNT = 160
 
 func Benchmark_AbilitiesRates(b *testing.B) {
 	type AbilityPickRates struct {
@@ -112,6 +112,44 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 					max := 0
 					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
 						rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+						max = maxInt(max, int(rate))
+					}
+
+					build = append(build, uint(max))
+				}
+
+				result = append(result, build)
+			}
+		}
+
+		_ = result
+	})
+
+	b.Run("#3", func(b *testing.B) {
+		ind := func(i, lvl_i, ab_i int) int {
+			return i*RATES_COUNT*ABILITIES_COUNT + lvl_i*ABILITIES_COUNT + ab_i
+		}
+
+		// #2 prep
+		buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
+		for i := 0; i < BUILDS_COUNT; i++ {
+			inputBuild := input[i]
+			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+					buildToRateToAbility[ind(i, lvl_i, ab_i)] =
+						inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+				}
+			}
+		}
+
+		result := [][]uint{}
+		for i := 0; i < b.N; i++ {
+			for i := 0; i < BUILDS_COUNT; i++ {
+				build := []uint{}
+				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+					max := 0
+					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+						rate := buildToRateToAbility[ind(i, lvl_i, ab_i)]
 						max = maxInt(max, int(rate))
 					}
 
