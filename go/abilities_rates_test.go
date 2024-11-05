@@ -27,169 +27,433 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 		abilityPickRates []AbilityPickRates
 	}
 
-	input := []Build{}
-	expected := [][]uint{}
+	// type BenchConfig struct {
+	// 	input
+	// }
 
-	for i := 0; i < BUILDS_COUNT; i++ {
-		abilityPickRates := []AbilityPickRates{}
-		for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-			randomRates := arrayOfRandomNumbers1To100(RATES_COUNT)
-			abilityPickRates = append(abilityPickRates, AbilityPickRates{
-				ability: fmt.Sprintf("#%v ability", ab_i+1),
-				rates:   randomRates,
+	prepare := func(BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT int) []Build {
+		input := []Build{}
+		expected := [][]uint{}
+
+		for i := 0; i < BUILDS_COUNT; i++ {
+			abilityPickRates := []AbilityPickRates{}
+			for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+				randomRates := arrayOfRandomNumbers1To100(RATES_COUNT)
+				abilityPickRates = append(abilityPickRates, AbilityPickRates{
+					ability: fmt.Sprintf("#%v ability", ab_i+1),
+					rates:   randomRates,
+				})
+			}
+
+			input = append(input, Build{
+				buildID:          fmt.Sprintf("%v ID", rand.Intn(200)),
+				matches:          rand.Intn(400),
+				wins:             rand.Intn(300),
+				earlyGameItems:   fmt.Sprintf("%v items", rand.Intn(200)),
+				abilityPickRates: abilityPickRates,
 			})
 		}
 
-		input = append(input, Build{
-			buildID:          fmt.Sprintf("%v ID", rand.Intn(200)),
-			matches:          rand.Intn(400),
-			wins:             rand.Intn(300),
-			earlyGameItems:   fmt.Sprintf("%v items", rand.Intn(200)),
-			abilityPickRates: abilityPickRates,
-		})
-	}
+		for i := 0; i < BUILDS_COUNT; i++ {
+			inputBuild := input[i]
+			expectedBuild := []uint{}
+			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+				max := 0
+				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+					rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					max = maxInt(max, int(rate))
+				}
 
-	for i := 0; i < BUILDS_COUNT; i++ {
-		inputBuild := input[i]
-		expectedBuild := []uint{}
-		for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-			max := 0
-			for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-				rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-				max = maxInt(max, int(rate))
+				expectedBuild = append(expectedBuild, uint(max))
 			}
 
-			expectedBuild = append(expectedBuild, uint(max))
+			expected = append(expected, expectedBuild)
 		}
 
-		expected = append(expected, expectedBuild)
+		_ = expected
+
+		return input
 	}
 
-	_ = expected
+	b.Run("x1", func(b *testing.B) {
+		BUILDS_COUNT := 4
+		ABILITIES_COUNT := 4
+		RATES_COUNT := 16
+		input := prepare(BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT)
 
-	// prepare := func() {
+		b.Run("slow    ", func(b *testing.B) {
+			result := [][]uint{}
 
-	// }
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					inputBuild := input[i]
+					build := []uint{}
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+							max = maxInt(max, int(rate))
+						}
+
+						build = append(build, uint(max))
+					}
+
+					result = append(result, build)
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("fast    ", func(b *testing.B) {
+
+			buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
+			for i := 0; i < BUILDS_COUNT; i++ {
+				inputBuild := input[i]
+				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+						buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+							inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					}
+				}
+			}
+
+			result := [][]uint{}
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					build := []uint{}
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+							max = maxInt(max, int(rate))
+						}
+
+						build = append(build, uint(max))
+					}
+
+					result = append(result, build)
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("noalloc slow", func(b *testing.B) {
+
+			result := make([][]uint, BUILDS_COUNT)
+			for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
+				result[b_i] = make([]uint, RATES_COUNT)
+			}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					inputBuild := input[i]
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+							max = maxInt(max, int(rate))
+						}
+
+						// build = append(build, uint(max))
+						result[i][lvl_i] = uint(max)
+					}
+
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("noalloc fast", func(b *testing.B) {
+			buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
+			for i := 0; i < BUILDS_COUNT; i++ {
+				inputBuild := input[i]
+				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+						buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+							inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					}
+				}
+			}
+
+			result := make([][]uint, BUILDS_COUNT)
+			for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
+				result[b_i] = make([]uint, RATES_COUNT)
+			}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+							max = maxInt(max, int(rate))
+						}
+
+						result[i][lvl_i] = uint(max)
+					}
+				}
+			}
+
+			_ = result
+		})
+	})
 
 	// TESTS
-	b.Run("#1    ", func(b *testing.B) {
-		result := [][]uint{}
-		for i := 0; i < b.N; i++ {
-			for i := 0; i < BUILDS_COUNT; i++ {
-				inputBuild := input[i]
-				build := []uint{}
-				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-					max := 0
-					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-						rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-						max = maxInt(max, int(rate))
+
+	b.Run("x5", func(b *testing.B) {
+		BUILDS_COUNT := 4 * 5
+		ABILITIES_COUNT := 4 * 5
+		RATES_COUNT := 16 * 5
+		input := prepare(BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT)
+
+		b.Run("slow", func(b *testing.B) {
+			result := [][]uint{}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					inputBuild := input[i]
+					build := []uint{}
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+							max = maxInt(max, int(rate))
+						}
+
+						build = append(build, uint(max))
 					}
 
-					build = append(build, uint(max))
-				}
-
-				result = append(result, build)
-			}
-		}
-
-		_ = result
-	})
-
-	b.Run("#2    ", func(b *testing.B) {
-		// #2 prep
-		buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
-		for i := 0; i < BUILDS_COUNT; i++ {
-			inputBuild := input[i]
-			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-					buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
-						inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					result = append(result, build)
 				}
 			}
-		}
 
-		result := [][]uint{}
-		for i := 0; i < b.N; i++ {
-			for i := 0; i < BUILDS_COUNT; i++ {
-				build := []uint{}
-				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-					max := 0
-					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-						rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
-						max = maxInt(max, int(rate))
-					}
+			_ = result
+		})
 
-					build = append(build, uint(max))
-				}
+		b.Run("fast", func(b *testing.B) {
 
-				result = append(result, build)
-			}
-		}
-
-		_ = result
-	})
-
-	b.Run("#1 no allocs", func(b *testing.B) {
-		result := make([][]uint, BUILDS_COUNT)
-		for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
-			result[b_i] = make([]uint, RATES_COUNT)
-		}
-
-		for i := 0; i < b.N; i++ {
+			buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
 			for i := 0; i < BUILDS_COUNT; i++ {
 				inputBuild := input[i]
 				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-					max := 0
 					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-						rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-						max = maxInt(max, int(rate))
+						buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+							inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					}
+				}
+			}
+
+			result := [][]uint{}
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					build := []uint{}
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+							max = maxInt(max, int(rate))
+						}
+
+						build = append(build, uint(max))
 					}
 
-					// build = append(build, uint(max))
-					result[i][lvl_i] = uint(max)
-				}
-
-			}
-		}
-
-		_ = result
-	})
-
-	b.Run("#2 no allocs", func(b *testing.B) {
-		// #2 prep
-		buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
-		for i := 0; i < BUILDS_COUNT; i++ {
-			inputBuild := input[i]
-			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-					buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
-						inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					result = append(result, build)
 				}
 			}
-		}
 
-		result := make([][]uint, BUILDS_COUNT)
-		for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
-			result[b_i] = make([]uint, RATES_COUNT)
-		}
+			_ = result
+		})
 
-		for i := 0; i < b.N; i++ {
+		b.Run("noalloc slow", func(b *testing.B) {
+
+			result := make([][]uint, BUILDS_COUNT)
+			for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
+				result[b_i] = make([]uint, RATES_COUNT)
+			}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					inputBuild := input[i]
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+							max = maxInt(max, int(rate))
+						}
+
+						// build = append(build, uint(max))
+						result[i][lvl_i] = uint(max)
+					}
+
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("noalloc fast", func(b *testing.B) {
+			buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
 			for i := 0; i < BUILDS_COUNT; i++ {
+				inputBuild := input[i]
 				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-					max := 0
 					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-						rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
-						max = maxInt(max, int(rate))
+						buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+							inputBuild.abilityPickRates[ab_i].rates[lvl_i]
 					}
-
-					result[i][lvl_i] = uint(max)
 				}
 			}
-		}
 
-		_ = result
+			result := make([][]uint, BUILDS_COUNT)
+			for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
+				result[b_i] = make([]uint, RATES_COUNT)
+			}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+							max = maxInt(max, int(rate))
+						}
+
+						result[i][lvl_i] = uint(max)
+					}
+				}
+			}
+
+			_ = result
+		})
 	})
 
+	b.Run("x25", func(b *testing.B) {
+		BUILDS_COUNT := 4 * 25
+		ABILITIES_COUNT := 4 * 25
+		RATES_COUNT := 16 * 25
+		input := prepare(BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT)
+
+		b.Run("slow", func(b *testing.B) {
+			result := [][]uint{}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					inputBuild := input[i]
+					build := []uint{}
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+							max = maxInt(max, int(rate))
+						}
+
+						build = append(build, uint(max))
+					}
+
+					result = append(result, build)
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("fast", func(b *testing.B) {
+
+			buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
+			for i := 0; i < BUILDS_COUNT; i++ {
+				inputBuild := input[i]
+				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+						buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+							inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					}
+				}
+			}
+
+			result := [][]uint{}
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					build := []uint{}
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+							max = maxInt(max, int(rate))
+						}
+
+						build = append(build, uint(max))
+					}
+
+					result = append(result, build)
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("noalloc slow", func(b *testing.B) {
+
+			result := make([][]uint, BUILDS_COUNT)
+			for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
+				result[b_i] = make([]uint, RATES_COUNT)
+			}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					inputBuild := input[i]
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+							max = maxInt(max, int(rate))
+						}
+
+						// build = append(build, uint(max))
+						result[i][lvl_i] = uint(max)
+					}
+
+				}
+			}
+
+			_ = result
+		})
+
+		b.Run("noalloc fast", func(b *testing.B) {
+			buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
+			for i := 0; i < BUILDS_COUNT; i++ {
+				inputBuild := input[i]
+				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+						buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+							inputBuild.abilityPickRates[ab_i].rates[lvl_i]
+					}
+				}
+			}
+
+			result := make([][]uint, BUILDS_COUNT)
+			for b_i := 0; b_i < BUILDS_COUNT; b_i++ {
+				result[b_i] = make([]uint, RATES_COUNT)
+			}
+
+			for i := 0; i < b.N; i++ {
+				for i := 0; i < BUILDS_COUNT; i++ {
+					for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+						max := 0
+						for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+							rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+							max = maxInt(max, int(rate))
+						}
+
+						result[i][lvl_i] = uint(max)
+					}
+				}
+			}
+
+			_ = result
+		})
+	})
 }
 
 func Test_AbilitiesRates(t *testing.T) {

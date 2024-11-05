@@ -1,1 +1,1 @@
-cls && go test --bench=Benchmark . --benchmem -cpu 1
+cls && go test --bench=Benchmark aos_soa_test.go --benchmem -cpu 1
