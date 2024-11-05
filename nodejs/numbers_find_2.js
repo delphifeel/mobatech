@@ -2,7 +2,7 @@ import { doBench, prepareBench } from "./db.mjs";
 
 // PREPARE
 let numbers = [];
-for (let i = 0; i < 40000; i++) {
+for (let i = 0; i < 400; i++) {
   numbers.push(i);
 }
 numbers.sort(() => Math.random() - 0.5);

@@ -11,7 +11,7 @@ import (
 
 const BUILDS_COUNT = 4
 const ABILITIES_COUNT = 4
-const RATES_COUNT = 16
+const RATES_COUNT = 1600
 
 func Benchmark_AbilitiesRates(b *testing.B) {
 	type AbilityPickRates struct {
@@ -68,7 +68,7 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 	_ = expected
 
 	// TESTS
-	b.Run("#1", func(b *testing.B) {
+	b.Run("#1    ", func(b *testing.B) {
 		result := [][]uint{}
 		for i := 0; i < b.N; i++ {
 			for i := 0; i < BUILDS_COUNT; i++ {
@@ -91,7 +91,7 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 		_ = result
 	})
 
-	b.Run("#2", func(b *testing.B) {
+	b.Run("#2    ", func(b *testing.B) {
 		// #2 prep
 		buildToRateToAbility := make([]uint, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
 		for i := 0; i < BUILDS_COUNT; i++ {
@@ -116,42 +116,6 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 					}
 
 					build = append(build, uint(max))
-				}
-
-				result = append(result, build)
-			}
-		}
-
-		_ = result
-	})
-
-	b.Run("#2 small", func(b *testing.B) {
-		// #2 prep
-		buildToRateToAbility := make([]uint8, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
-		for i := 0; i < BUILDS_COUNT; i++ {
-			inputBuild := input[i]
-			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-					buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
-						uint8(inputBuild.abilityPickRates[ab_i].rates[lvl_i])
-				}
-			}
-		}
-
-		result := [][]uint{}
-		for i := 0; i < b.N; i++ {
-			for i := 0; i < BUILDS_COUNT; i++ {
-				build := []uint{}
-				for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-					var max uint = 0
-					for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-						rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
-						if uint(rate) > max {
-							max = uint(rate)
-						}
-					}
-
-					build = append(build, max)
 				}
 
 				result = append(result, build)
@@ -356,3 +320,39 @@ func maxInt(a, b int) int {
 func init() {
 	rand.Seed(time.Now().UnixNano()) // Seed the random number generator
 }
+
+// b.Run("#2 small", func(b *testing.B) {
+// 	// #2 prep
+// 	buildToRateToAbility := make([]uint8, BUILDS_COUNT*RATES_COUNT*ABILITIES_COUNT)
+// 	for i := 0; i < BUILDS_COUNT; i++ {
+// 		inputBuild := input[i]
+// 		for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+// 			for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+// 				buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i] =
+// 					uint8(inputBuild.abilityPickRates[ab_i].rates[lvl_i])
+// 			}
+// 		}
+// 	}
+
+// 	result := [][]uint{}
+// 	for i := 0; i < b.N; i++ {
+// 		for i := 0; i < BUILDS_COUNT; i++ {
+// 			build := []uint{}
+// 			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
+// 				var max uint = 0
+// 				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
+// 					rate := buildToRateToAbility[i*RATES_COUNT*ABILITIES_COUNT+lvl_i*ABILITIES_COUNT+ab_i]
+// 					if uint(rate) > max {
+// 						max = uint(rate)
+// 					}
+// 				}
+
+// 				build = append(build, max)
+// 			}
+
+// 			result = append(result, build)
+// 		}
+// 	}
+
+// 	_ = result
+// })
