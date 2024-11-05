@@ -1,104 +1,85 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"testing"
-	"time"
 )
 
+const ENTITY_COUNT = 3200
+
+type Vector struct {
+	X int64
+	Y int64
+	Z int64
+}
+
 func Benchmark_AOS_SOA(b *testing.B) {
-	const ENTITY_COUNT = 20000
-
-	type Vector struct {
-		X int
-		Y int
-		Z int
-	}
-
 	positions := make([]Vector, ENTITY_COUNT)
 	for pi := range positions {
 		pos := &positions[pi]
-		pos.X = rand.Intn(3000)
-		pos.Y = rand.Intn(3000)
-		pos.Z = rand.Intn(3000)
+		pos.X = rand.Int63n(3000)
+		pos.Y = rand.Int63n(3000)
+		pos.Z = rand.Int63n(3000)
 	}
 
 	velocities := make([]Vector, ENTITY_COUNT)
 	for vi := range velocities {
 		vel := &velocities[vi]
-		vel.X = rand.Intn(3000)
-		vel.Y = rand.Intn(3000)
-		vel.Z = rand.Intn(3000)
+		vel.X = rand.Int63n(3000)
+		vel.Y = rand.Int63n(3000)
+		vel.Z = rand.Int63n(3000)
 	}
 
-	// TEST 1 PREPARE
-
-	type Entity struct {
-		Position Vector
-		Velocity Vector
-		Meta     string
-	}
-	entitiesArray := make([]Entity, ENTITY_COUNT)
-	for ei := range entitiesArray {
-		entitiesArray[ei].Position = positions[ei]
-		entitiesArray[ei].Velocity = velocities[ei]
-		entitiesArray[ei].Meta = fmt.Sprintf("pos vel %v", ei)
-	}
-
-	// fmt.Printf("entitiesArray: %#v\n", entitiesArray)
-
-	sum1 := 0
 	b.Run("Array Of Structs", func(b *testing.B) {
+
+		type Entity struct {
+			Position Vector
+			Velocity Vector
+			// Meta     string
+		}
+		entitiesArray := make([]Entity, ENTITY_COUNT)
+		for ei := range entitiesArray {
+			entitiesArray[ei].Position = positions[ei]
+			entitiesArray[ei].Velocity = velocities[ei]
+			// entitiesArray[ei].Meta = fmt.Sprintf("pos vel %v", ei)
+		}
+
+		// --RUN--
 		for i := 0; i < b.N; i++ {
-			sum := 0
+			sum := int64(0)
 			for eai := range entitiesArray {
 				sum += entitiesArray[eai].Position.Y
 				if entitiesArray[eai].Velocity.Z > 1000 {
 					sum -= entitiesArray[eai].Velocity.Z
 				}
 			}
-			sum1 = sum
+			_ = sum
 		}
 	})
-	fmt.Println(sum1)
 
-	// TEST 2 PREPARE
-
-	type Entities struct {
-		PositionY []int
-		VelocityZ []int
-	}
-
-	internalArray := make([]int, ENTITY_COUNT*2)
-
-	entitiesStruct := Entities{
-		PositionY: internalArray[:ENTITY_COUNT],
-		VelocityZ: internalArray[ENTITY_COUNT:],
-	}
-
-	for i := 0; i < ENTITY_COUNT; i++ {
-		entitiesStruct.PositionY[i] = positions[i].Y
-		entitiesStruct.VelocityZ[i] = velocities[i].Z
-	}
-	// fmt.Printf("entitiesStruct: %#v\n", entitiesStruct)
-
-	sum2 := 0
 	b.Run("Struct Of Arrays", func(b *testing.B) {
+		PosY_VelZ := make([][2]int64, ENTITY_COUNT)
+
+		for i := 0; i < ENTITY_COUNT; i++ {
+			PosY_VelZ[i][0] = positions[i].Y
+			PosY_VelZ[i][1] = velocities[i].Z
+		}
+
+		// --RUN--
 		for i := 0; i < b.N; i++ {
-			sum := 0
+			sum := int64(0)
 			for esi := 0; esi < ENTITY_COUNT; esi++ {
-				sum += entitiesStruct.PositionY[esi]
-				if entitiesStruct.VelocityZ[esi] > 1000 {
-					sum -= entitiesStruct.VelocityZ[esi]
+				sum += PosY_VelZ[esi][0]
+				if PosY_VelZ[esi][1] > 1000 {
+					sum -= PosY_VelZ[esi][1]
 				}
 			}
 
-			sum2 = sum
+			_ = sum
 		}
 	})
 
-	fmt.Println(sum2)
+	// fmt.Println(sum2)
 }
 
 // func Test_AOS_SOA(t *testing.T) {
@@ -109,8 +90,8 @@ func Benchmark_AOS_SOA(b *testing.B) {
 
 // 	type Build struct {
 // 		buildID          string
-// 		matches          int
-// 		wins             int
+// 		matches          int64
+// 		wins             int64
 // 		earlyGameItems   string
 // 		abilityPickRates []AbilityPickRates
 // 	}
@@ -133,10 +114,10 @@ func Benchmark_AOS_SOA(b *testing.B) {
 // 		}
 
 // 		input = append(input, Build{
-// 			buildID:          fmt.Sprintf("%v ID", rand.Intn(200)),
-// 			matches:          rand.Intn(400),
-// 			wins:             rand.Intn(300),
-// 			earlyGameItems:   fmt.Sprintf("%v items", rand.Intn(200)),
+// 			buildID:          fmt.Sprintf("%v ID", rand.Int63n(200)),
+// 			matches:          rand.Int63n(400),
+// 			wins:             rand.Int63n(300),
+// 			earlyGameItems:   fmt.Sprintf("%v items", rand.Int63n(200)),
 // 			abilityPickRates: abilityPickRates,
 // 		})
 // 	}
@@ -148,7 +129,7 @@ func Benchmark_AOS_SOA(b *testing.B) {
 // 			max := 0
 // 			for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
 // 				rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-// 				max = maxInt(max, int(rate))
+// 				max = maxInt(max, int64(rate))
 // 			}
 
 // 			expectedBuild = append(expectedBuild, uint(max))
@@ -167,7 +148,7 @@ func Benchmark_AOS_SOA(b *testing.B) {
 // 				max := 0
 // 				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
 // 					rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-// 					max = maxInt(max, int(rate))
+// 					max = maxInt(max, int64(rate))
 // 				}
 
 // 				build = append(build, uint(max))
@@ -182,5 +163,5 @@ func Benchmark_AOS_SOA(b *testing.B) {
 // }
 
 func init() {
-	rand.Seed(time.Now().UnixNano()) // Seed the random number generator
+	// rand.Seed(time.Now().UnixNano()) // Seed the random number generator
 }
