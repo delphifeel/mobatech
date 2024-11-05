@@ -74,15 +74,15 @@ const prepare = (mul) => {
 // console.log(expected);
 
 const small = prepare(1);
-const bigger = prepare(10);
-const biggest = prepare(100);
+const bigger = prepare(5);
+const biggest = prepare(25);
 
 import Benchmark from "benchmark";
 var suite = new Benchmark.Suite();
 
 // add tests
 suite
-  .add("x1     ", function () {
+  .add("x1       ", function () {
     const { input, BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT } = small;
 
     const result = [];
@@ -126,7 +126,7 @@ suite
       result.push(expectedBuild);
     }
   })
-  .add("x10      ", function () {
+  .add("x5        ", function () {
     const { input, BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT } = bigger;
 
     const result = [];
@@ -145,7 +145,7 @@ suite
       result.push(expectedBuild);
     }
   })
-  .add("x10 (fast)", function () {
+  .add("x5 (fast)", function () {
     const {
       indexFn,
       buildToRateToAbility,
@@ -170,7 +170,7 @@ suite
       result.push(expectedBuild);
     }
   })
-  .add("x100      ", function () {
+  .add("x25        ", function () {
     const { input, BUILDS_COUNT, ABILITIES_COUNT, RATES_COUNT } = biggest;
 
     const result = [];
@@ -189,7 +189,7 @@ suite
       result.push(expectedBuild);
     }
   })
-  .add("x100 (fast)", function () {
+  .add("x25 (fast)", function () {
     const {
       indexFn,
       buildToRateToAbility,

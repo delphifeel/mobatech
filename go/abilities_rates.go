@@ -11,7 +11,7 @@ import (
 
 const BUILDS_COUNT = 4
 const ABILITIES_COUNT = 4
-const RATES_COUNT = 1600
+const RATES_COUNT = 16
 
 func Benchmark_AbilitiesRates(b *testing.B) {
 	type AbilityPickRates struct {
@@ -66,6 +66,10 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 	}
 
 	_ = expected
+
+	prepare := func() {
+
+	}
 
 	// TESTS
 	b.Run("#1    ", func(b *testing.B) {
