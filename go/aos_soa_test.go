@@ -1,11 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"testing"
 )
 
-const ENTITY_COUNT = 3200
+const ENTITY_COUNT = 100000
+const RESULTS_COUNT = ENTITY_COUNT / 10
 
 type Vector struct {
 	X int64
@@ -31,18 +33,29 @@ func Benchmark_AOS_SOA(b *testing.B) {
 	}
 
 	b.Run("Array Of Structs", func(b *testing.B) {
+		type Meta struct {
+			Id   string
+			Hash string
+			Time uint
+		}
 
 		type Entity struct {
 			Position Vector
 			Velocity Vector
-			// Meta     string
+			Meta     *Meta
 		}
 		entitiesArray := make([]Entity, ENTITY_COUNT)
 		for ei := range entitiesArray {
 			entitiesArray[ei].Position = positions[ei]
 			entitiesArray[ei].Velocity = velocities[ei]
-			// entitiesArray[ei].Meta = fmt.Sprintf("pos vel %v", ei)
+			entitiesArray[ei].Meta = &Meta{
+				Id:   fmt.Sprintf("id %v", positions[ei].Y),
+				Hash: fmt.Sprintf("hash %v", velocities[ei].Z),
+				Time: uint(rand.Uint32()),
+			}
 		}
+
+		results := make([]int64, RESULTS_COUNT)
 
 		// --RUN--
 		for i := 0; i < b.N; i++ {
@@ -58,20 +71,25 @@ func Benchmark_AOS_SOA(b *testing.B) {
 	})
 
 	b.Run("Struct Of Arrays", func(b *testing.B) {
-		PosY_VelZ := make([][2]int64, ENTITY_COUNT)
+		type Entity struct {
+			PositionY int64
+			VelocityZ int64
+		}
+
+		entities := make([]Entity, ENTITY_COUNT)
 
 		for i := 0; i < ENTITY_COUNT; i++ {
-			PosY_VelZ[i][0] = positions[i].Y
-			PosY_VelZ[i][1] = velocities[i].Z
+			entities[i].PositionY = positions[i].Y
+			entities[i].VelocityZ = velocities[i].Z
 		}
 
 		// --RUN--
 		for i := 0; i < b.N; i++ {
 			sum := int64(0)
 			for esi := 0; esi < ENTITY_COUNT; esi++ {
-				sum += PosY_VelZ[esi][0]
-				if PosY_VelZ[esi][1] > 1000 {
-					sum -= PosY_VelZ[esi][1]
+				sum += entities[esi].PositionY
+				if entities[esi].VelocityZ > 1000 {
+					sum -= entities[esi].VelocityZ
 				}
 			}
 
