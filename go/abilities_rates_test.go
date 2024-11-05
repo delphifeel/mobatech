@@ -67,9 +67,9 @@ func Benchmark_AbilitiesRates(b *testing.B) {
 
 	_ = expected
 
-	prepare := func() {
+	// prepare := func() {
 
-	}
+	// }
 
 	// TESTS
 	b.Run("#1    ", func(b *testing.B) {
