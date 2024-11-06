@@ -6,13 +6,44 @@ import (
 	"testing"
 )
 
-const ENTITY_COUNT = 100000
+const ENTITY_COUNT = 32000
 const RESULTS_COUNT = ENTITY_COUNT / 10
 
 type Vector struct {
 	X int64
 	Y int64
 	Z int64
+}
+
+type Results struct {
+	arr   []int64
+	count int
+}
+
+func resultsInit() Results {
+	return Results{
+		arr:   make([]int64, RESULTS_COUNT),
+		count: 0,
+	}
+}
+
+func (r *Results) clear() {
+	r.count = 0
+}
+
+func (r *Results) add(v int64) {
+	if r.count == RESULTS_COUNT {
+		r.arr[0] = v
+		r.count = 1
+		return
+	}
+
+	r.arr[r.count] = v
+	r.count++
+}
+
+func (r *Results) print() {
+	fmt.Printf("results: %#v\n", r.arr)
 }
 
 func Benchmark_AOS_SOA(b *testing.B) {
@@ -41,33 +72,35 @@ func Benchmark_AOS_SOA(b *testing.B) {
 
 		type Entity struct {
 			Position Vector
+			Meta     Meta
 			Velocity Vector
-			Meta     *Meta
 		}
 		entitiesArray := make([]Entity, ENTITY_COUNT)
 		for ei := range entitiesArray {
 			entitiesArray[ei].Position = positions[ei]
 			entitiesArray[ei].Velocity = velocities[ei]
-			entitiesArray[ei].Meta = &Meta{
+			entitiesArray[ei].Meta = Meta{
 				Id:   fmt.Sprintf("id %v", positions[ei].Y),
 				Hash: fmt.Sprintf("hash %v", velocities[ei].Z),
 				Time: uint(rand.Uint32()),
 			}
 		}
 
-		results := make([]int64, RESULTS_COUNT)
-
+		results := resultsInit()
 		// --RUN--
 		for i := 0; i < b.N; i++ {
+			results.clear()
 			sum := int64(0)
 			for eai := range entitiesArray {
 				sum += entitiesArray[eai].Position.Y
 				if entitiesArray[eai].Velocity.Z > 1000 {
 					sum -= entitiesArray[eai].Velocity.Z
 				}
+				results.add(sum)
 			}
-			_ = sum
 		}
+
+		// results.print()
 	})
 
 	b.Run("Struct Of Arrays", func(b *testing.B) {
@@ -83,18 +116,21 @@ func Benchmark_AOS_SOA(b *testing.B) {
 			entities[i].VelocityZ = velocities[i].Z
 		}
 
+		results := resultsInit()
 		// --RUN--
 		for i := 0; i < b.N; i++ {
+			results.clear()
 			sum := int64(0)
 			for esi := 0; esi < ENTITY_COUNT; esi++ {
 				sum += entities[esi].PositionY
 				if entities[esi].VelocityZ > 1000 {
 					sum -= entities[esi].VelocityZ
 				}
+				results.add(sum)
 			}
-
-			_ = sum
 		}
+
+		// results.print()
 	})
 
 	// fmt.Println(sum2)
