@@ -1,13 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"testing"
 )
 
-const ENTITY_COUNT = 64000
-const RESULTS_COUNT = ENTITY_COUNT / 100
+const MAX_ENTITY_COUNT = 3_200_000
 
 type Vector struct {
 	X int32
@@ -18,11 +19,12 @@ type Vector struct {
 type Results struct {
 	arr   []int32
 	count int
+	cap   int
 }
 
-func resultsInit() Results {
+func resultsInit(cap int) Results {
 	return Results{
-		arr:   make([]int32, RESULTS_COUNT),
+		arr:   make([]int32, cap),
 		count: 0,
 	}
 }
@@ -32,7 +34,7 @@ func (r *Results) clear() {
 }
 
 func (r *Results) add(v int32) {
-	if r.count == RESULTS_COUNT {
+	if r.count == r.cap {
 		r.arr[0] = v
 		r.count = 1
 		return
@@ -42,9 +44,9 @@ func (r *Results) add(v int32) {
 	r.count++
 }
 
-func (r *Results) print() {
-	fmt.Printf("results: %#v\n", r.arr)
-}
+// func (r *Results) print() {
+// 	fmt.Printf("results: %#v\n", r.arr)
+// }
 
 func makeVector(src Vector) *Vector {
 	return &Vector{
@@ -55,35 +57,32 @@ func makeVector(src Vector) *Vector {
 }
 
 func shouldSkip(velX, velZ int32) bool {
-	return velX > 300000/10 || velZ < 300000/10
+	val := velX > 0 || velZ > 0
+	if !val {
+		panic("error")
+	}
+	return val
 }
 
-func Benchmark_AOS_SOA(b *testing.B) {
-	positions := make([]Vector, ENTITY_COUNT)
-	for pi := range positions {
-		pos := &positions[pi]
-		pos.X = rand.Int31n(300000)
-		pos.Y = rand.Int31n(300000)
-		pos.Z = rand.Int31n(300000)
-	}
+func aosPtrsBench(
+	entitiesCount int, b *testing.B, positions []Vector, velocities []Vector,
+	randomVelX int32, randomVelY int32, randomVelZ int32) {
 
-	velocities := make([]Vector, ENTITY_COUNT)
-	for vi := range velocities {
-		vel := &velocities[vi]
-		vel.X = rand.Int31n(300000)
-		vel.Y = rand.Int31n(300000)
-		vel.Z = rand.Int31n(300000)
-	}
+	b.Run(fmt.Sprintf("[%v] Array Of Structs Pointers", entitiesCount), func(b *testing.B) {
+		ENTITY_COUNT := entitiesCount
 
-	randomVelZ := int32(300000 / 10)
-	randomVelX := int32(300000 / 10)
-	randomVelY := int32(300000 / 10)
+		type InnerTrash struct {
+			V1 *Vector
+			V2 *Vector
+			S1 string
+			V3 *Vector
+		}
 
-	b.Run("Array Of Structs Pointers", func(b *testing.B) {
 		type Meta struct {
-			Id   string
-			Hash string
-			Time uint
+			Id    string
+			Hash  string
+			Time  uint
+			Trash *InnerTrash
 		}
 
 		type Entity struct {
@@ -94,15 +93,21 @@ func Benchmark_AOS_SOA(b *testing.B) {
 		entitiesArray := make([]Entity, ENTITY_COUNT)
 		for ei := range entitiesArray {
 			entitiesArray[ei].Position = makeVector(positions[ei])
-			entitiesArray[ei].Velocity = makeVector(velocities[ei])
 			entitiesArray[ei].Meta = &Meta{
 				Id:   fmt.Sprintf("id %v", positions[ei].Y),
 				Hash: fmt.Sprintf("hash %v", velocities[ei].Z),
 				Time: uint(rand.Uint32()),
+				Trash: &InnerTrash{
+					V1: makeVector(positions[ei]),
+					V2: makeVector(positions[ei]),
+					S1: fmt.Sprintf("S1 %v", positions[ei].Z),
+					V3: makeVector(positions[ei]),
+				},
 			}
+			entitiesArray[ei].Velocity = makeVector(velocities[ei])
 		}
 
-		results := resultsInit()
+		results := resultsInit(ENTITY_COUNT / 2)
 		// --RUN--
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -140,12 +145,26 @@ func Benchmark_AOS_SOA(b *testing.B) {
 
 		// results.print()
 	})
+}
 
-	b.Run("Array Of Structs", func(b *testing.B) {
+func aosBench(
+	entitiesCount int, b *testing.B, positions []Vector, velocities []Vector,
+	randomVelX int32, randomVelY int32, randomVelZ int32) {
+
+	b.Run(fmt.Sprintf("[%v] Array Of Structs", entitiesCount), func(b *testing.B) {
+		ENTITY_COUNT := entitiesCount
+		type InnerTrash struct {
+			V1 Vector
+			V2 Vector
+			S1 string
+			V3 Vector
+		}
+
 		type Meta struct {
-			Id   string
-			Hash string
-			Time uint
+			Id    string
+			Hash  string
+			Time  uint
+			Trash InnerTrash
 		}
 
 		type Entity struct {
@@ -161,10 +180,16 @@ func Benchmark_AOS_SOA(b *testing.B) {
 				Id:   fmt.Sprintf("id %v", positions[ei].Y),
 				Hash: fmt.Sprintf("hash %v", velocities[ei].Z),
 				Time: uint(rand.Uint32()),
+				Trash: InnerTrash{
+					V1: positions[ei],
+					V2: positions[ei],
+					S1: fmt.Sprintf("S1 %v", positions[ei].Z),
+					V3: positions[ei],
+				},
 			}
 		}
 
-		results := resultsInit()
+		results := resultsInit(ENTITY_COUNT / 2)
 		// --RUN--
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -203,49 +228,75 @@ func Benchmark_AOS_SOA(b *testing.B) {
 
 		// results.print()
 	})
+}
 
-	b.Run("Struct Of Arrays", func(b *testing.B) {
-		// type Entity struct {
-		// 	PositionY int32
-		// 	VelocityZ int32
-		// 	VelocityY int32
-		// 	VelocityX int32
-		// }
+func soaBench(
+	entitiesCount int, b *testing.B, positions []Vector, velocities []Vector,
+	randomVelX int32, randomVelY int32, randomVelZ int32) {
 
-		// entities := make([]Entity, ENTITY_COUNT)
+	b.Run(fmt.Sprintf("[%v] Struct Of Arrays", entitiesCount), func(b *testing.B) {
+		ENTITY_COUNT := entitiesCount
 
-		type AllEntities struct {
-			PositionY []int32
-			VelocityZ []int32
-			VelocityY []int32
-			VelocityX []int32
+		type InnerTrash struct {
+			V1 Vector
+			V2 Vector
+			S1 string
+			V3 Vector
 		}
 
-		xPositions := make([]int32, ENTITY_COUNT)
+		type Meta struct {
+			Id    string
+			Hash  string
+			Time  uint
+			Trash InnerTrash
+		}
+
+		type AllEntities struct {
+			// PositionX []int32
+			VelocityX []int32
+			VelocityZ []int32
+			PositionY []int32
+			VelocityY []int32
+			Meta      []Meta
+		}
+
+		PositionX := make([]int32, ENTITY_COUNT)
 		entities := AllEntities{
-			PositionY: make([]int32, ENTITY_COUNT),
-			VelocityZ: make([]int32, ENTITY_COUNT),
-			VelocityY: make([]int32, ENTITY_COUNT),
 			VelocityX: make([]int32, ENTITY_COUNT),
+			VelocityZ: make([]int32, ENTITY_COUNT),
+			PositionY: make([]int32, ENTITY_COUNT),
+			VelocityY: make([]int32, ENTITY_COUNT),
+			Meta:      make([]Meta, ENTITY_COUNT),
 		}
 
 		for i := 0; i < ENTITY_COUNT; i++ {
-			entities.PositionY[i] = positions[i].Y
-			entities.VelocityZ[i] = velocities[i].Z
-			entities.VelocityY[i] = velocities[i].Y
+			PositionX[i] = positions[i].X
 			entities.VelocityX[i] = velocities[i].X
+			entities.VelocityZ[i] = velocities[i].Z
+			entities.PositionY[i] = positions[i].Y
+			entities.VelocityY[i] = velocities[i].Y
 
-			xPositions[i] = positions[i].X
+			entities.Meta[i] = Meta{
+				Id:   fmt.Sprintf("id %v", positions[i].Y),
+				Hash: fmt.Sprintf("hash %v", velocities[i].Z),
+				Time: uint(rand.Uint32()),
+				Trash: InnerTrash{
+					V1: positions[i],
+					V2: positions[i],
+					S1: fmt.Sprintf("S1 %v", positions[i].Z),
+					V3: positions[i],
+				},
+			}
 		}
 
-		results := resultsInit()
+		results := resultsInit(ENTITY_COUNT / 2)
 		// --RUN--
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			results.clear()
 			sum := int32(0)
 			for esi := 0; esi < ENTITY_COUNT; esi++ {
-				if xPositions[esi]%2 == 0 {
+				if PositionX[esi]%2 == 0 {
 					continue
 				}
 				if shouldSkip(entities.VelocityX[esi], entities.VelocityZ[esi]) {
@@ -277,90 +328,112 @@ func Benchmark_AOS_SOA(b *testing.B) {
 
 		// results.print()
 	})
-
-	// fmt.Println(sum2)
 }
 
-// func Test_AOS_SOA(t *testing.T) {
-// 	type AbilityPickRates struct {
-// 		ability string
-// 		rates   []uint
-// 	}
+func writeJsonToFile(fileName string, value any) {
+	jsonData, err := json.MarshalIndent(value, "", "  ")
+	if err != nil {
+		panic(err)
+	}
 
-// 	type Build struct {
-// 		buildID          string
-// 		matches          int32
-// 		wins             int32
-// 		earlyGameItems   string
-// 		abilityPickRates []AbilityPickRates
-// 	}
+	// Open or create the file
+	file, err := os.Create(fileName)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
 
-// 	BUILDS_COUNT := 1
-// 	ABILITIES_COUNT := 2
-// 	RATES_COUNT := 3
+	// Write JSON data to the file
+	_, err = file.Write(jsonData)
+	if err != nil {
+		panic(err)
+	}
+}
 
-// 	input := []Build{}
-// 	expected := [][]uint{}
+func readJsonFromFile(outPtr any, fileName string) {
+	// Open the JSON file
+	file, err := os.Open(fileName)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
 
-// 	for i := 0; i < BUILDS_COUNT; i++ {
-// 		abilityPickRates := []AbilityPickRates{}
-// 		for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-// 			randomRates := arrayOfRandomNumbers1To100(RATES_COUNT)
-// 			abilityPickRates = append(abilityPickRates, AbilityPickRates{
-// 				ability: fmt.Sprintf("#%v ability", ab_i+1),
-// 				rates:   randomRates,
-// 			})
-// 		}
+	// Decode JSON data into the struct
+	err = json.NewDecoder(file).Decode(outPtr)
+	if err != nil {
+		panic(err)
+	}
+}
 
-// 		input = append(input, Build{
-// 			buildID:          fmt.Sprintf("%v ID", rand.Int63n(200)),
-// 			matches:          rand.Int63n(400),
-// 			wins:             rand.Int63n(300),
-// 			earlyGameItems:   fmt.Sprintf("%v items", rand.Int63n(200)),
-// 			abilityPickRates: abilityPickRates,
-// 		})
-// 	}
+type Input struct {
+	Positions  []Vector
+	Velocities []Vector
+	RandomVelX int32
+	RandomVelY int32
+	RandomVelZ int32
+}
 
-// 	for i := 0; i < BUILDS_COUNT; i++ {
-// 		inputBuild := input[i]
-// 		expectedBuild := []uint{}
-// 		for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-// 			max := 0
-// 			for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-// 				rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-// 				max = maxInt(max, int32(rate))
-// 			}
+func Benchmark_AOS_SOA(b *testing.B) {
+	var input Input
+	readJsonFromFile(&input, "aos_soa_test_input.json")
 
-// 			expectedBuild = append(expectedBuild, uint(max))
-// 		}
+	positions := input.Positions
+	velocities := input.Velocities
+	randomVelX := input.RandomVelX
+	randomVelY := input.RandomVelY
+	randomVelZ := input.RandomVelZ
 
-// 		expected = append(expected, expectedBuild)
-// 	}
+	fmt.Println(randomVelX)
+	fmt.Println(randomVelY)
+	fmt.Println(randomVelZ)
 
-// 	// TESTS
-// 	t.Run("#1", func(t *testing.T) {
-// 		result := [][]uint{}
-// 		for i := 0; i < BUILDS_COUNT; i++ {
-// 			inputBuild := input[i]
-// 			build := []uint{}
-// 			for lvl_i := 0; lvl_i < RATES_COUNT; lvl_i++ {
-// 				max := 0
-// 				for ab_i := 0; ab_i < ABILITIES_COUNT; ab_i++ {
-// 					rate := inputBuild.abilityPickRates[ab_i].rates[lvl_i]
-// 					max = maxInt(max, int32(rate))
-// 				}
+	aosPtrsBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-// 				build = append(build, uint(max))
-// 			}
+	aosPtrsBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-// 			result = append(result, build)
-// 		}
+	aosPtrsBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-// 		assert.Equal(t, expected, result)
-// 	})
+	aosPtrsBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-// }
+	// fmt.Println(sum2)
 
-func init() {
-	// rand.Seed(time.Now().UnixNano()) // Seed the random number generator
+}
+
+func createNewInput() {
+	positions := make([]Vector, MAX_ENTITY_COUNT)
+	for pi := range positions {
+		pos := &positions[pi]
+		pos.X = rand.Int31n(300000)
+		pos.Y = rand.Int31n(300000)
+		pos.Z = rand.Int31n(300000)
+	}
+
+	velocities := make([]Vector, MAX_ENTITY_COUNT)
+	for vi := range velocities {
+		vel := &velocities[vi]
+		vel.X = rand.Int31n(300000)
+		vel.Y = rand.Int31n(300000)
+		vel.Z = rand.Int31n(300000)
+	}
+
+	randomVelZ := int32(300000 / 10)
+	randomVelX := int32(300000 / 10)
+	randomVelY := int32(300000 / 10)
+
+	input := Input{
+		Positions:  positions,
+		Velocities: velocities,
+		RandomVelX: randomVelX,
+		RandomVelY: randomVelY,
+		RandomVelZ: randomVelZ,
+	}
+	writeJsonToFile("aos_soa_test_input.json", &input)
 }

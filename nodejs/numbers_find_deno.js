@@ -5,7 +5,7 @@ const prepSrc = (numbersCount) => {
     numbers.push(i);
   }
   numbers.sort(() => Math.random() - 0.5);
-  return { numbers };
+  return numbers;
 };
 
 const prepare = (srcArray, numbersCount) => {
@@ -29,111 +29,148 @@ const srcArray = prepSrc(99999);
 const small = prepare(srcArray, 100);
 const medium = prepare(srcArray, 1000);
 const big = prepare(srcArray, 10000);
+const bigest = prepare(srcArray, 90000);
 
 // add tests
-Deno.bench("x1 find", function () {
+Deno.bench("100 find", function () {
   const { numbers, toFind } = small;
   let indexes = [];
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
+  indexes.push(numbers.findIndex((n) => n === toFind[0]));
+  indexes.push(numbers.findIndex((n) => n === toFind[1]));
+  indexes.push(numbers.findIndex((n) => n === toFind[2]));
+  indexes.push(numbers.findIndex((n) => n === toFind[3]));
 });
-Deno.bench("x1 for", function () {
+Deno.bench("100 for", function () {
   const { numbers, toFind } = small;
   let indexes = [];
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[0]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[1]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[2]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[3]) {
       indexes.push(i);
       break;
     }
   }
 });
-Deno.bench("x10 find", function () {
+Deno.bench("1000 find", function () {
   const { numbers, toFind } = medium;
   let indexes = [];
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
+  indexes.push(numbers.findIndex((n) => n === toFind[0]));
+  indexes.push(numbers.findIndex((n) => n === toFind[1]));
+  indexes.push(numbers.findIndex((n) => n === toFind[2]));
+  indexes.push(numbers.findIndex((n) => n === toFind[3]));
 });
-Deno.bench("x10 for", function () {
+Deno.bench("1000 for", function () {
   const { numbers, toFind } = medium;
   let indexes = [];
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[0]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[1]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[2]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[3]) {
       indexes.push(i);
       break;
     }
   }
 });
-Deno.bench("x100 find", function () {
+Deno.bench("10_000 find", function () {
   const { numbers, toFind } = big;
   let indexes = [];
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
-  indexes.push(numbers.findIndex((n) => n === toFind));
+  indexes.push(numbers.findIndex((n) => n === toFind[0]));
+  indexes.push(numbers.findIndex((n) => n === toFind[1]));
+  indexes.push(numbers.findIndex((n) => n === toFind[2]));
+  indexes.push(numbers.findIndex((n) => n === toFind[3]));
 });
-Deno.bench("x100 for", function () {
+Deno.bench("10_000 for", function () {
   const { numbers, toFind } = big;
   let indexes = [];
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[0]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[1]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[2]) {
       indexes.push(i);
       break;
     }
   }
   for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] === toFind) {
+    if (numbers[i] === toFind[3]) {
+      indexes.push(i);
+      break;
+    }
+  }
+});
+Deno.bench("90_000 find", function () {
+  const { numbers, toFind } = bigest;
+  let indexes = [];
+  indexes.push(numbers.findIndex((n) => n === toFind[0]));
+  indexes.push(numbers.findIndex((n) => n === toFind[1]));
+  indexes.push(numbers.findIndex((n) => n === toFind[2]));
+  indexes.push(numbers.findIndex((n) => n === toFind[3]));
+});
+Deno.bench("90_000 for", function () {
+  const { numbers, toFind } = bigest;
+  let indexes = [];
+  for (let i = 0; i < numbers.length; i++) {
+    if (numbers[i] === toFind[0]) {
+      indexes.push(i);
+      break;
+    }
+  }
+  for (let i = 0; i < numbers.length; i++) {
+    if (numbers[i] === toFind[1]) {
+      indexes.push(i);
+      break;
+    }
+  }
+  for (let i = 0; i < numbers.length; i++) {
+    if (numbers[i] === toFind[2]) {
+      indexes.push(i);
+      break;
+    }
+  }
+  for (let i = 0; i < numbers.length; i++) {
+    if (numbers[i] === toFind[3]) {
       indexes.push(i);
       break;
     }

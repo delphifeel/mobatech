@@ -1,62 +1,154 @@
-import { doBench, prepareBench } from "./db.mjs";
-
-prepareBench(
-  () => {
-    return {
-      input: [],
-      toFind: [],
-      expected: [],
-    };
-  },
-  { iterations: 1000 }
-);
-
 // PREPARE
-const numbers = [];
-for (let i = 0; i < 400; i++) {
-  numbers.push(i);
-}
-numbers.sort(() => Math.random() - 0.5);
-
-doBench("Numbers 10000 find", (iterCount) => {
-  let indexes = [];
-  for (let iter_index = 0; iter_index < iterCount; iter_index++) {
-    indexes.push(numbers.findIndex((n) => n === 1));
-    indexes.push(numbers.findIndex((n) => n === 2));
-    indexes.push(numbers.findIndex((n) => n === 3));
-    indexes.push(numbers.findIndex((n) => n === 4));
+const prepSrc = (numbersCount) => {
+  let numbers = [];
+  for (let i = 0; i < numbersCount; i++) {
+    numbers.push(i);
   }
-  return [];
-});
+  numbers.sort(() => Math.random() - 0.5);
+  return { numbers };
+};
 
-doBench("Numbers 10000 for loop", (iterCount) => {
-  let indexes = [];
-  for (let iter_index = 0; iter_index < iterCount; iter_index++) {
-    for (let i = 0; i < numbers.length; i++) {
-      if (numbers[i] === 1) {
-        indexes.push(i);
-        break;
-      }
-    }
-    for (let i = 0; i < numbers.length; i++) {
-      if (numbers[i] === 2) {
-        indexes.push(i);
-        break;
-      }
-    }
-    for (let i = 0; i < numbers.length; i++) {
-      if (numbers[i] === 3) {
-        indexes.push(i);
-        break;
-      }
-    }
-    for (let i = 0; i < numbers.length; i++) {
-      if (numbers[i] === 4) {
-        indexes.push(i);
-        break;
-      }
-    }
+const prepare = (srcArray, numbersCount) => {
+  let numbers = [];
+  for (let i = 0; i < numbersCount; i++) {
+    numbers.push(srcArray[i]);
   }
 
-  return [];
-});
+  const toFind = [
+    numbers[numbersCount / 2],
+    numbers[numbersCount / 5],
+    numbers[numbersCount / 10],
+    numbers[numbersCount / 20],
+  ];
+
+  return { numbers, toFind };
+};
+
+import Benchmark from "benchmark";
+var suite = new Benchmark.Suite();
+
+const srcArray = prepSrc(99999);
+
+const small = prepare(srcArray, 100);
+const medium = prepare(srcArray, 1000);
+const big = prepare(srcArray, 10000);
+
+// add tests
+suite
+  .add("x1 find", function () {
+    const { numbers, toFind } = small;
+    let indexes = [];
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+  })
+  .add("x1 for", function () {
+    const { numbers, toFind } = small;
+    let indexes = [];
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+  })
+  .add("x10 find", function () {
+    const { numbers, toFind } = medium;
+    let indexes = [];
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+  })
+  .add("x10 for", function () {
+    const { numbers, toFind } = medium;
+    let indexes = [];
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+  })
+  .add("x100 find", function () {
+    const { numbers, toFind } = big;
+    let indexes = [];
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+    indexes.push(numbers.findIndex((n) => n === toFind));
+  })
+  .add("x100 for", function () {
+    const { numbers, toFind } = big;
+    let indexes = [];
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+    for (let i = 0; i < numbers.length; i++) {
+      if (numbers[i] === toFind) {
+        indexes.push(i);
+        break;
+      }
+    }
+  })
+  // add listeners
+  .on("cycle", function (event) {
+    console.log(String(event.target));
+  })
+  .on("complete", function () {
+    console.log("Fastest is " + this.filter("fastest").map("name"));
+  })
+  // run async
+  .run({ async: true });

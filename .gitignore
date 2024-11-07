@@ -1,4 +1,8 @@
 nodejs/node_modules
 heavyload
+rust
+
 *.exe
 *.out
+
+go/aos_soa_test_input.json
