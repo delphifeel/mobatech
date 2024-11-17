@@ -2,7 +2,11 @@ nodejs/node_modules
 heavyload
 rust
 
+cpp/build
+
 *.exe
 *.out
+
+*cache_analysis*
 
 go/aos_soa_test_input.json

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"testing"
+	"time"
 )
 
 const MAX_ENTITY_COUNT = 3_200_000
@@ -149,86 +150,91 @@ func aosPtrsBench(
 }
 
 func aosBench(
-	entitiesCount int, b *testing.B, positions []Vector, velocities []Vector,
+	entitiesCount int, positions []Vector, velocities []Vector,
 	randomVelX int32, randomVelY int32, randomVelZ int32) {
 
-	b.Run(fmt.Sprintf("[%v] Array Of Structs", entitiesCount), func(b *testing.B) {
-		ENTITY_COUNT := entitiesCount
-		type InnerTrash struct {
-			V1 Vector
-			V2 Vector
-			S1 string
-			V3 Vector
-		}
+	ENTITY_COUNT := entitiesCount
+	type InnerTrash struct {
+		V1 Vector
+		V2 Vector
+		S1 string
+		V3 Vector
+	}
 
-		type Meta struct {
-			Id    string
-			Hash  string
-			Time  uint
-			Trash InnerTrash
-		}
+	type Meta struct {
+		Id    string
+		Hash  string
+		Time  uint
+		Trash InnerTrash
+	}
 
-		type Entity struct {
-			Position Vector
-			Meta     Meta
-			Velocity Vector
+	type Entity struct {
+		Position Vector
+		Meta     Meta
+		Velocity Vector
+	}
+	entitiesArray := make([]Entity, ENTITY_COUNT)
+	for ei := range entitiesArray {
+		entitiesArray[ei].Position = positions[ei]
+		entitiesArray[ei].Velocity = velocities[ei]
+		entitiesArray[ei].Meta = Meta{
+			Id:   fmt.Sprintf("id %v", positions[ei].Y),
+			Hash: fmt.Sprintf("hash %v", velocities[ei].Z),
+			Time: uint(rand.Uint32()),
+			Trash: InnerTrash{
+				V1: positions[ei],
+				V2: positions[ei],
+				S1: fmt.Sprintf("S1 %v", positions[ei].Z),
+				V3: positions[ei],
+			},
 		}
-		entitiesArray := make([]Entity, ENTITY_COUNT)
-		for ei := range entitiesArray {
-			entitiesArray[ei].Position = positions[ei]
-			entitiesArray[ei].Velocity = velocities[ei]
-			entitiesArray[ei].Meta = Meta{
-				Id:   fmt.Sprintf("id %v", positions[ei].Y),
-				Hash: fmt.Sprintf("hash %v", velocities[ei].Z),
-				Time: uint(rand.Uint32()),
-				Trash: InnerTrash{
-					V1: positions[ei],
-					V2: positions[ei],
-					S1: fmt.Sprintf("S1 %v", positions[ei].Z),
-					V3: positions[ei],
-				},
+	}
+
+	results := resultsInit(ENTITY_COUNT / 2)
+	// --RUN--
+	start := time.Now()
+	sum := int32(0)
+	for i := 0; i < 1000; i++ {
+		results.clear()
+		for eai := range entitiesArray {
+			if entitiesArray[eai].Position.X%2 == 0 {
+				continue
 			}
-		}
-
-		results := resultsInit(ENTITY_COUNT / 2)
-		// --RUN--
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			results.clear()
-			sum := int32(0)
-			for eai := range entitiesArray {
-				if entitiesArray[eai].Position.X%2 == 0 {
-					continue
-				}
-				if shouldSkip(entitiesArray[eai].Velocity.X, entitiesArray[eai].Velocity.Z) {
-					continue
-				}
-				sum += entitiesArray[eai].Position.Y
-				if entitiesArray[eai].Velocity.Z > randomVelZ {
-					sum -= entitiesArray[eai].Velocity.X
-					continue
-				}
-				if entitiesArray[eai].Velocity.Y > randomVelY {
-					if eai != len(entitiesArray) {
-						entitiesArray[eai+1].Velocity.Y = entitiesArray[eai].Velocity.Y
-					}
-					sum *= 2
-					continue
-				}
-				if entitiesArray[eai].Velocity.X < randomVelX {
-					if eai != len(entitiesArray) {
-						entitiesArray[eai+1].Velocity.X = entitiesArray[eai].Velocity.X
-					}
-					sum /= 2
-					continue
-				}
-
-				results.add(sum)
+			if shouldSkip(entitiesArray[eai].Velocity.X, entitiesArray[eai].Velocity.Z) {
+				continue
 			}
-		}
+			sum += entitiesArray[eai].Position.Y
+			if entitiesArray[eai].Velocity.Z > randomVelZ {
+				sum -= entitiesArray[eai].Velocity.X
+				continue
+			}
+			if entitiesArray[eai].Velocity.Y > randomVelY {
+				if eai != len(entitiesArray) {
+					entitiesArray[eai+1].Velocity.Y = entitiesArray[eai].Velocity.Y
+				}
+				sum *= 2
+				continue
+			}
+			if entitiesArray[eai].Velocity.X < randomVelX {
+				if eai != len(entitiesArray) {
+					entitiesArray[eai+1].Velocity.X = entitiesArray[eai].Velocity.X
+				}
+				sum /= 2
+				continue
+			}
 
-		// results.print()
-	})
+			results.add(sum)
+		}
+	}
+
+	// Calculate the elapsed time in microseconds
+	elapsed := time.Since(start).Microseconds()
+
+	// Print the elapsed time in microseconds
+	fmt.Printf("Function execution time: %d microseconds\n", elapsed)
+	fmt.Printf("sum: %v\n", sum)
+
+	// results.print()
 }
 
 func soaBench(
@@ -374,7 +380,7 @@ type Input struct {
 	RandomVelZ int32
 }
 
-func Benchmark_AOS_SOA(b *testing.B) {
+func main() {
 	// createNewInput()
 	// return
 
@@ -404,40 +410,9 @@ func Benchmark_AOS_SOA(b *testing.B) {
 	// soaBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
 	// aosPtrsBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	aosBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(1_000_000, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	// soaBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
 	// fmt.Println(sum2)
 
-}
-
-func createNewInput() {
-	positions := make([]Vector, MAX_ENTITY_COUNT)
-	for pi := range positions {
-		pos := &positions[pi]
-		pos.X = rand.Int31n(300000)
-		pos.Y = rand.Int31n(300000)
-		pos.Z = rand.Int31n(300000)
-	}
-
-	velocities := make([]Vector, MAX_ENTITY_COUNT)
-	for vi := range velocities {
-		vel := &velocities[vi]
-		vel.X = rand.Int31n(300000)
-		vel.Y = rand.Int31n(300000)
-		vel.Z = rand.Int31n(300000)
-	}
-
-	randomVelZ := int32(300000 / 10)
-	randomVelX := int32(300000 / 10)
-	randomVelY := int32(300000 / 10)
-
-	input := Input{
-		Positions:  positions,
-		Velocities: velocities,
-		RandomVelX: randomVelX,
-		RandomVelY: randomVelY,
-		RandomVelZ: randomVelZ,
-	}
-	writeJsonToFile("aos_soa_test_input.json", &input)
 }
