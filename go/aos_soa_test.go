@@ -11,21 +11,25 @@ import (
 const MAX_ENTITY_COUNT = 3_200_000
 
 type Vector struct {
-	X int32
-	Y int32
-	Z int32
+	X        int32
+	Y        int32
+	Z        int32
+	IsActive bool
 }
 
 type Results struct {
-	arr   []int32
-	count int
-	cap   int
+	arr    []int32
+	count  int
+	cap    int
+	allSum int32
 }
 
 func resultsInit(cap int) Results {
 	return Results{
-		arr:   make([]int32, cap),
-		count: 0,
+		arr:    make([]int32, cap),
+		count:  0,
+		cap:    cap,
+		allSum: 0,
 	}
 }
 
@@ -34,6 +38,7 @@ func (r *Results) clear() {
 }
 
 func (r *Results) add(v int32) {
+	r.allSum += v
 	if r.count == r.cap {
 		r.arr[0] = v
 		r.count = 1
@@ -44,9 +49,9 @@ func (r *Results) add(v int32) {
 	r.count++
 }
 
-// func (r *Results) print() {
-// 	fmt.Printf("results: %#v\n", r.arr)
-// }
+func (r *Results) print() {
+	fmt.Printf("sum: %v\n", r.allSum)
+}
 
 func makeVector(src Vector) *Vector {
 	return &Vector{
@@ -115,6 +120,10 @@ func aosPtrsBench(
 			results.clear()
 			sum := int32(0)
 			for eai := range entitiesArray {
+				if !entitiesArray[eai].Position.IsActive {
+					continue
+				}
+
 				if entitiesArray[eai].Position.X%2 == 0 {
 					continue
 				}
@@ -127,14 +136,14 @@ func aosPtrsBench(
 					continue
 				}
 				if entitiesArray[eai].Velocity.Y > randomVelY {
-					if eai != len(entitiesArray) {
+					if eai < len(entitiesArray)-1 {
 						entitiesArray[eai+1].Velocity.Y = entitiesArray[eai].Velocity.Y
 					}
 					sum *= 2
 					continue
 				}
 				if entitiesArray[eai].Velocity.X < randomVelX {
-					if eai != len(entitiesArray) {
+					if eai < len(entitiesArray)-1 {
 						entitiesArray[eai+1].Velocity.X = entitiesArray[eai].Velocity.X
 					}
 					sum /= 2
@@ -197,6 +206,10 @@ func aosBench(
 			results.clear()
 			sum := int32(0)
 			for eai := range entitiesArray {
+				if !entitiesArray[eai].Position.IsActive {
+					continue
+				}
+
 				if entitiesArray[eai].Position.X%2 == 0 {
 					continue
 				}
@@ -209,14 +222,14 @@ func aosBench(
 					continue
 				}
 				if entitiesArray[eai].Velocity.Y > randomVelY {
-					if eai != len(entitiesArray) {
+					if eai < len(entitiesArray)-1 {
 						entitiesArray[eai+1].Velocity.Y = entitiesArray[eai].Velocity.Y
 					}
 					sum *= 2
 					continue
 				}
 				if entitiesArray[eai].Velocity.X < randomVelX {
-					if eai != len(entitiesArray) {
+					if eai < len(entitiesArray)-1 {
 						entitiesArray[eai+1].Velocity.X = entitiesArray[eai].Velocity.X
 					}
 					sum /= 2
@@ -254,6 +267,7 @@ func soaBench(
 
 		type AllEntities struct {
 			// PositionX []int32
+			IsActive  []bool
 			VelocityX []int32
 			VelocityZ []int32
 			PositionY []int32
@@ -263,6 +277,7 @@ func soaBench(
 
 		PositionX := make([]int32, ENTITY_COUNT)
 		entities := AllEntities{
+			IsActive:  make([]bool, ENTITY_COUNT),
 			VelocityX: make([]int32, ENTITY_COUNT),
 			VelocityZ: make([]int32, ENTITY_COUNT),
 			PositionY: make([]int32, ENTITY_COUNT),
@@ -272,6 +287,7 @@ func soaBench(
 
 		for i := 0; i < ENTITY_COUNT; i++ {
 			PositionX[i] = positions[i].X
+			entities.IsActive[i] = positions[i].IsActive
 			entities.VelocityX[i] = velocities[i].X
 			entities.VelocityZ[i] = velocities[i].Z
 			entities.PositionY[i] = positions[i].Y
@@ -297,6 +313,10 @@ func soaBench(
 			results.clear()
 			sum := int32(0)
 			for esi := 0; esi < ENTITY_COUNT; esi++ {
+				if !entities.IsActive[esi] {
+					continue
+				}
+
 				if PositionX[esi]%2 == 0 {
 					continue
 				}
@@ -310,14 +330,117 @@ func soaBench(
 					continue
 				}
 				if entities.VelocityY[esi] > randomVelY {
-					if esi != ENTITY_COUNT {
+					if esi < ENTITY_COUNT-1 {
 						entities.VelocityY[esi+1] = entities.VelocityY[esi]
 					}
 					sum *= 2
 					continue
 				}
 				if entities.VelocityX[esi] < randomVelX {
-					if esi != ENTITY_COUNT {
+					if esi < ENTITY_COUNT-1 {
+						entities.VelocityX[esi+1] = entities.VelocityX[esi]
+					}
+					sum /= 2
+					continue
+				}
+				results.add(sum)
+			}
+		}
+
+		// results.print()
+	})
+}
+
+func soaArrSplitBench(
+	entitiesCount int, b *testing.B, positions []Vector, velocities []Vector,
+	randomVelX int32, randomVelY int32, randomVelZ int32) {
+
+	b.Run(fmt.Sprintf("[%v] Struct Of Arrays Splited", entitiesCount), func(b *testing.B) {
+		ENTITY_COUNT := entitiesCount
+
+		type InnerTrash struct {
+			V1 Vector
+			V2 Vector
+			S1 string
+			V3 Vector
+		}
+
+		type Meta struct {
+			Id    string
+			Hash  string
+			Time  uint
+			Trash InnerTrash
+		}
+
+		type AllEntities struct {
+			// PositionX []int32
+			VelocityX []int32
+			VelocityZ []int32
+			PositionY []int32
+			VelocityY []int32
+			Meta      []Meta
+		}
+
+		PositionX := make([]int32, 0)
+		entities := AllEntities{
+			VelocityX: make([]int32, 0),
+			VelocityZ: make([]int32, 0),
+			PositionY: make([]int32, 0),
+			VelocityY: make([]int32, 0),
+			Meta:      make([]Meta, 0),
+		}
+
+		for i := 0; i < ENTITY_COUNT; i++ {
+			if !positions[i].IsActive {
+				continue
+			}
+			PositionX = append(PositionX, positions[i].X)
+			entities.VelocityX = append(entities.VelocityX, velocities[i].X)
+			entities.VelocityZ = append(entities.VelocityZ, velocities[i].Z)
+			entities.PositionY = append(entities.PositionY, positions[i].Y)
+			entities.VelocityY = append(entities.VelocityY, velocities[i].Y)
+
+			entities.Meta = append(entities.Meta, Meta{
+				Id:   fmt.Sprintf("id %v", positions[i].Y),
+				Hash: fmt.Sprintf("hash %v", velocities[i].Z),
+				Time: uint(rand.Uint32()),
+				Trash: InnerTrash{
+					V1: positions[i],
+					V2: positions[i],
+					S1: fmt.Sprintf("S1 %v", positions[i].Z),
+					V3: positions[i],
+				},
+			})
+		}
+
+		results := resultsInit(ENTITY_COUNT / 2)
+		// --RUN--
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			results.clear()
+			sum := int32(0)
+			for esi := 0; esi < len(entities.PositionY); esi++ {
+				if PositionX[esi]%2 == 0 {
+					continue
+				}
+				if shouldSkip(entities.VelocityX[esi], entities.VelocityZ[esi]) {
+					continue
+				}
+
+				sum += entities.PositionY[esi]
+				if entities.VelocityZ[esi] > randomVelZ {
+					sum -= entities.VelocityX[esi]
+					continue
+				}
+				if entities.VelocityY[esi] > randomVelY {
+					if esi < len(entities.PositionY)-1 {
+						entities.VelocityY[esi+1] = entities.VelocityY[esi]
+					}
+					sum *= 2
+					continue
+				}
+				if entities.VelocityX[esi] < randomVelX {
+					if esi < len(entities.PositionY)-1 {
 						entities.VelocityX[esi+1] = entities.VelocityX[esi]
 					}
 					sum /= 2
@@ -391,21 +514,25 @@ func Benchmark_AOS_SOA(b *testing.B) {
 	// fmt.Println(randomVelY)
 	// fmt.Println(randomVelZ)
 
+	aosPtrsBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaArrSplitBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+
 	aosPtrsBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	aosBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	soaBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaArrSplitBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
 	aosPtrsBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	aosBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	soaBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaArrSplitBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
 	aosPtrsBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	aosBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	soaBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-
-	aosPtrsBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	aosBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	soaBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaArrSplitBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
 	// fmt.Println(sum2)
 
@@ -418,6 +545,7 @@ func createNewInput() {
 		pos.X = rand.Int31n(300000)
 		pos.Y = rand.Int31n(300000)
 		pos.Z = rand.Int31n(300000)
+		pos.IsActive = pi%4 == 2 || pi%4 == 3
 	}
 
 	velocities := make([]Vector, MAX_ENTITY_COUNT)
@@ -426,6 +554,7 @@ func createNewInput() {
 		vel.X = rand.Int31n(300000)
 		vel.Y = rand.Int31n(300000)
 		vel.Z = rand.Int31n(300000)
+		vel.IsActive = vi%4 == 2 || vi%4 == 3
 	}
 
 	randomVelZ := int32(300000 / 10)

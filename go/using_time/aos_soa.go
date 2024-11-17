@@ -27,6 +27,7 @@ func resultsInit(cap int) Results {
 	return Results{
 		arr:   make([]int32, cap),
 		count: 0,
+		cap:   cap,
 	}
 }
 
