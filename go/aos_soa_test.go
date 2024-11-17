@@ -391,21 +391,21 @@ func Benchmark_AOS_SOA(b *testing.B) {
 	// fmt.Println(randomVelY)
 	// fmt.Println(randomVelZ)
 
-	// aosPtrsBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// aosBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// soaBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosPtrsBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(1000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-	// aosPtrsBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// aosBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// soaBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosPtrsBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(10000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-	// aosPtrsBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// aosBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// soaBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosPtrsBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(100_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
-	// aosPtrsBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	aosPtrsBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 	aosBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
-	// soaBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
+	soaBench(1_000_000, b, positions, velocities, randomVelX, randomVelY, randomVelZ)
 
 	// fmt.Println(sum2)
 
