@@ -4,6 +4,9 @@ rust
 
 cpp/build
 
+zig/zig-out
+zig/zig-cache
+
 *.exe
 *.out
 
